@@ -1,3 +1,4 @@
+#include <avr/wdt.h>
 const int ledPins[] = {13, 12, 8}; // Pines de los LED (topos)
 const int buttonPins[] = {10, 11, 9}; // Pines de los botones (martillos)
 const int buzzerPin = 5; // Pin del buzzer
@@ -6,13 +7,14 @@ const int numButtons = 3;
 int activeMole; // Mole activo (LED) en la secuencia actual
 int score; // Puntaje inicial
 unsigned long moleDisplayTime; // Tiempo de visualización del topo (en milisegundos) ajustado según el nivel
-unsigned long baseMoleDisplayTime[] = {1500, 1000, 500}; // Tiempos de visualización del topo base para cada nivel de dificultad
+unsigned long baseMoleDisplayTime[] = {1000, 750, 500}; // Tiempos de visualización del topo base para cada nivel de dificultad
 enum Difficulty { FACIL, NORMAL, DIFICIL }; // Enumeración para los niveles de dificultad
 Difficulty currentDifficulty; // Nivel de dificultad inicial
 bool printedDifficulty = false; // Bandera para controlar si se ha impreso la dificultad al inicio
 unsigned long startTime; // Tiempo de inicio del juego
 bool level2Printed = false; // Bandera para controlar si se ha impreso "Nivel 2"
 bool level3Printed = false; // Bandera para controlar si se ha impreso "Nivel 3"
+bool level4Printed = false; // Bandera para controlar si se ha impreso "Nivel 3"
 
 void setup() {
   Serial.begin(9600); // Iniciar comunicación serial
@@ -56,9 +58,11 @@ void loop() {
 
     // Verificar si el puntaje es igual o menor que cero
     if (score <= 0) {
-      // Detener el juego
-      tone(buzzerPin, 150, 1000); // Sonar un tono largo para indicar que el juego ha terminado
-      while (true) {} // Bucle infinito para detener el juego
+      // Reiniciar el programa
+      tone(buzzerPin, 700, 1500);
+      delay(1000);
+      wdt_enable(WDTO_15MS); // Habilitar el temporizador de reinicio
+      while (true) {} // Esperar a que el microcontrolador se reinicie
     }
 
     // Verifica si han pasado 30 segundos y aún no se ha impreso "Nivel 2"
@@ -79,12 +83,20 @@ void loop() {
       delay(100); // Pequeño retraso entre los tonos
       tone(buzzerPin, 2000, 100);
     }
+    if (!level4Printed && millis() - startTime >= 90000) {
+      Serial.println("Nivel 4");
+      score = 120; // Reinicia el puntaje a 120
+      level4Printed = true; // Marca que se ha impreso "Nivel 3"
+      tone(buzzerPin, 1500, 100); // Sonar el buzzer con doble tono (1500 Hz por 100 ms) al cambiar de nivel
+      delay(100); // Pequeño retraso entre los tonos
+      tone(buzzerPin, 2000, 100);
+    }
     if (score % 50 == 0) {
-      if (currentDifficulty == FACIL && moleDisplayTime > 300)
+      if (currentDifficulty == FACIL && moleDisplayTime > 350)
         moleDisplayTime -= 200; // Aumenta la velocidad en 200ms con un límite máximo de 300ms
       if (currentDifficulty == NORMAL && moleDisplayTime > 300)
         moleDisplayTime -= 200; // Aumenta la velocidad en 200ms con un límite máximo de 300ms
-      if (currentDifficulty == DIFICIL && moleDisplayTime > 300)
+      if (currentDifficulty == DIFICIL && moleDisplayTime > 250)
         moleDisplayTime -= 200; // Aumenta la velocidad en 200ms con un límite máximo de 300ms
     }
   }
